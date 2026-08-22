@@ -1,0 +1,747 @@
+{% extends "base.html" %}
+
+{% block title %}Call Simulator - EduCall AI{% endblock %}
+
+{% block extra_css %}
+<style>
+.call-container {
+    max-width: 800px;
+    margin: 0 auto;
+    background: linear-gradient(135deg, #1e293b, #0f172a);
+    border-radius: 24px;
+    padding: 2rem;
+    color: white;
+    min-height: 600px;
+}
+.call-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+.call-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.call-status .dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #22c55e;
+    animation: pulse 1.5s infinite;
+}
+.call-status .dot.inactive {
+    background: #64748b;
+    animation: none;
+}
+.call-status .dot.listening {
+    background: #f59e0b;
+    animation: pulse 0.5s infinite;
+}
+.call-status .dot.speaking {
+    background: #3b82f6;
+    animation: pulse 0.3s infinite;
+}
+@keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
+}
+.messages {
+    height: 350px;
+    overflow-y: auto;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    margin: 1rem 0;
+    scroll-behavior: smooth;
+}
+.message {
+    margin: 0.75rem 0;
+    max-width: 80%;
+    animation: fadeIn 0.3s ease;
+}
+.message.user {
+    margin-left: auto;
+    text-align: right;
+}
+.message .bubble {
+    display: inline-block;
+    padding: 0.75rem 1rem;
+    border-radius: 12px;
+    background: rgba(59, 130, 246, 0.2);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+.message.user .bubble {
+    background: rgba(139, 92, 246, 0.2);
+    border-color: rgba(139, 92, 246, 0.3);
+}
+.message .label {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    margin-bottom: 0.25rem;
+}
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.voice-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 0.75rem;
+    border-radius: 30px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    margin: 0.5rem auto;
+    max-width: 300px;
+}
+.voice-indicator .pulse-ring {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #22c55e;
+    animation: pulse 1.5s infinite;
+}
+.voice-indicator .pulse-ring.inactive {
+    background: #64748b;
+    animation: none;
+}
+.voice-indicator .pulse-ring.listening {
+    background: #f59e0b;
+    animation: pulse 0.5s infinite;
+}
+.voice-indicator .pulse-ring.speaking {
+    background: #3b82f6;
+    animation: pulse 0.3s infinite;
+}
+.voice-status {
+    font-size: 0.9rem;
+    color: #94a3b8;
+    min-height: 1.5rem;
+    text-align: center;
+}
+.voice-status .highlight {
+    color: #60a5fa;
+    font-weight: 600;
+}
+.quick-buttons {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 0.5rem;
+}
+.quick-buttons button {
+    padding: 0.4rem 1rem;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+    color: #cbd5e1;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.quick-buttons button:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: #3b82f6;
+}
+.quick-buttons button svg {
+    width: 14px;
+    height: 14px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.student-select {
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+    color: white;
+    font-size: 0.875rem;
+    flex: 1;
+    min-width: 150px;
+}
+.student-select option {
+    background: #1e293b;
+    color: white;
+}
+.btn-small {
+    padding: 0.6rem 1.2rem;
+    border-radius: 8px;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.btn-small svg {
+    width: 16px;
+    height: 16px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.btn-start {
+    background: #22c55e;
+    color: white;
+}
+.btn-start:hover {
+    transform: scale(1.02);
+}
+.btn-end {
+    background: #ef4444;
+    color: white;
+}
+.btn-end:hover {
+    transform: scale(1.02);
+}
+.btn-small:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+}
+.top-controls {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="call-container">
+    <div class="call-header">
+        <h2 style="display: flex; align-items: center; gap: 0.5rem; font-size: 1.25rem;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+            </svg>
+            Voice Call Simulator
+        </h2>
+        <div class="call-status">
+            <span class="dot inactive" id="status-dot"></span>
+            <span id="status-text">Ready</span>
+        </div>
+    </div>
+    
+    <div class="top-controls">
+        <select class="student-select" id="student-select">
+            <option value="">Select a student (optional)</option>
+            {% for student in students %}
+                <option value="{{ student.name }}">{{ student.name }} (Grade {{ student.grade }})</option>
+            {% endfor %}
+        </select>
+        <button class="btn-small btn-start" id="start-btn" onclick="startCall()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="5 3 19 12 5 21 5 3"/>
+            </svg>
+            Start Call
+        </button>
+        <button class="btn-small btn-end" id="end-btn" onclick="endCall()" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18.36 6.64a9 9 0 1 1 0 12.72"/>
+                <path d="M12 12l-4-4"/>
+            </svg>
+            End Call
+        </button>
+    </div>
+    
+    <div class="messages" id="messages">
+        <div style="text-align: center; color: #64748b; padding: 2rem;">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 0.5rem;">
+                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" y1="19" x2="12" y2="22"/>
+            </svg>
+            <p>Press <strong>"Start Call"</strong> and just speak naturally!</p>
+            <p style="font-size: 0.875rem;">The AI is always listening during the call</p>
+        </div>
+    </div>
+    
+    <!-- Voice Status Indicator (NO BUTTON) -->
+    <div class="voice-indicator" id="voiceIndicator">
+        <span class="pulse-ring inactive" id="mic-ring"></span>
+        <span id="mic-status-text">🎤 Waiting for call</span>
+    </div>
+    <div class="voice-status" id="voiceStatus">
+        Press <span class="highlight">"Start Call"</span> to begin
+    </div>
+    
+    <!-- Quick Buttons -->
+    <div class="quick-buttons">
+        <button onclick="quickMessage('What\'s my balance?')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 6v6l4 2"/>
+            </svg>
+            Balance
+        </button>
+        <button onclick="quickMessage('Is my kid in school today?')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+            </svg>
+            Attendance
+        </button>
+        <button onclick="quickMessage('When is the next event?')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                <line x1="16" y1="2" x2="16" y2="6"/>
+                <line x1="8" y1="2" x2="8" y2="6"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
+                <circle cx="12" cy="15" r="1"/>
+                <circle cx="16" cy="15" r="1"/>
+                <circle cx="8" cy="15" r="1"/>
+            </svg>
+            Events
+        </button>
+        <button onclick="quickMessage('I need to talk to someone')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+            Transfer
+        </button>
+        <button onclick="quickMessage('Yes, resolved')" style="border-color: rgba(34, 197, 94, 0.3);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+            Resolved
+        </button>
+        <button onclick="quickMessage('No, not resolved')" style="border-color: rgba(239, 68, 68, 0.3);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            Unresolved
+        </button>
+    </div>
+    
+    <!-- Hidden input for sending messages -->
+    <div class="input-area" style="display: none;">
+        <input type="text" id="message-input" placeholder="Type your message...">
+        <button class="btn-small btn-start" id="send-btn" onclick="sendMessage()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13"/>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+            Send
+        </button>
+    </div>
+</div>
+
+<script>
+let sessionId = null;
+let callActive = false;
+let isProcessing = false;
+let recognition = null;
+let isListening = false;
+
+// ============================================
+// SPEECH RECOGNITION - ALWAYS LISTENING
+// ============================================
+
+function initSpeechRecognition() {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        document.getElementById('voiceStatus').innerHTML = '❌ Browser doesn\'t support voice. Use Chrome or Edge.';
+        return false;
+    }
+    
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.maxAlternatives = 1;
+    
+    recognition.onstart = function() {
+        isListening = true;
+        document.getElementById('mic-ring').className = 'pulse-ring listening';
+        document.getElementById('mic-status-text').textContent = '🎤 Listening... Speak now!';
+        document.getElementById('status-dot').className = 'dot listening';
+        document.getElementById('status-text').textContent = 'Listening';
+        document.getElementById('voiceStatus').innerHTML = '🎤 <span class="highlight">Listening...</span> Speak now!';
+    };
+    
+    recognition.onresult = function(event) {
+        let finalTranscript = '';
+        
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            if (event.results[i].isFinal) {
+                finalTranscript = event.results[i][0].transcript;
+                break;
+            }
+        }
+        
+        if (finalTranscript && !isProcessing && callActive) {
+            // Stop listening briefly while processing
+            try { recognition.stop(); } catch(e) {}
+            
+            document.getElementById('voiceStatus').innerHTML = '🗣️ You said: "' + finalTranscript + '"';
+            document.getElementById('message-input').value = finalTranscript;
+            
+            // Send the message
+            setTimeout(sendMessage, 300);
+        }
+    };
+    
+    recognition.onerror = function(event) {
+        console.error('Speech error:', event.error);
+        if (event.error === 'not-allowed') {
+            document.getElementById('voiceStatus').innerHTML = '❌ Microphone access denied. Allow mic access.';
+        } else if (event.error === 'no-speech') {
+            document.getElementById('voiceStatus').innerHTML = '🔇 No speech detected. Try again.';
+            if (callActive && !isProcessing) {
+                setTimeout(startListening, 1000);
+            }
+        } else if (event.error === 'aborted') {
+            // User stopped, ignore
+        } else {
+            document.getElementById('voiceStatus').innerHTML = '❌ Error: ' + event.error;
+        }
+        stopListening();
+    };
+    
+    recognition.onend = function() {
+        stopListening();
+        if (callActive && !isProcessing) {
+            setTimeout(startListening, 500);
+        }
+    };
+    
+    return true;
+}
+
+function startListening() {
+    if (!recognition) {
+        if (!initSpeechRecognition()) return;
+    }
+    if (isListening) return;
+    if (!callActive) return;
+    if (isProcessing) return;
+    
+    try {
+        recognition.start();
+    } catch (e) {
+        console.error('Start error:', e);
+        setTimeout(startListening, 500);
+    }
+}
+
+function stopListening() {
+    if (recognition) {
+        try {
+            recognition.stop();
+        } catch (e) {}
+    }
+    isListening = false;
+    document.getElementById('mic-ring').className = 'pulse-ring inactive';
+    document.getElementById('mic-status-text').textContent = '🎤 Listening paused';
+    if (!document.getElementById('voiceStatus').innerHTML.includes('Error')) {
+        document.getElementById('voiceStatus').innerHTML = '🎤 <span class="highlight">Listening...</span> Speak now!';
+    }
+    if (callActive) {
+        document.getElementById('status-dot').className = 'dot';
+        document.getElementById('status-text').textContent = 'In Call';
+    }
+}
+
+// ============================================
+// SPEECH SYNTHESIS (Voice Output)
+// ============================================
+
+function speakText(text) {
+    return new Promise(function(resolve) {
+        if (!('speechSynthesis' in window)) {
+            resolve();
+            return;
+        }
+        
+        // Stop listening while speaking
+        if (isListening) {
+            try { recognition.stop(); } catch(e) {}
+        }
+        
+        window.speechSynthesis.cancel();
+        
+        const cleanText = text.replace(/[^\w\s.,?!'"]/g, '').trim();
+        if (!cleanText) {
+            resolve();
+            return;
+        }
+        
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        utterance.lang = 'en-US';
+        utterance.rate = 0.9;
+        utterance.pitch = 1;
+        utterance.volume = 1;
+        
+        const voices = window.speechSynthesis.getVoices();
+        const preferredVoice = voices.find(function(v) {
+            return v.name.includes('Google') || 
+                   v.name.includes('Samantha') || 
+                   v.name.includes('Zira') ||
+                   v.name.includes('David');
+        });
+        if (preferredVoice) {
+            utterance.voice = preferredVoice;
+        }
+        
+        utterance.onstart = function() {
+            document.getElementById('mic-ring').className = 'pulse-ring speaking';
+            document.getElementById('mic-status-text').textContent = '🔊 Speaking...';
+            document.getElementById('status-dot').className = 'dot speaking';
+            document.getElementById('status-text').textContent = 'Speaking';
+            document.getElementById('voiceStatus').innerHTML = '🔊 <span class="highlight">Speaking...</span>';
+        };
+        
+        utterance.onend = function() {
+            if (callActive && !isProcessing) {
+                document.getElementById('status-dot').className = 'dot';
+                document.getElementById('status-text').textContent = 'In Call';
+                document.getElementById('mic-ring').className = 'pulse-ring';
+                document.getElementById('mic-status-text').textContent = '🎤 Listening...';
+                document.getElementById('voiceStatus').innerHTML = '🎤 <span class="highlight">Listening...</span> Speak now!';
+                setTimeout(startListening, 300);
+            }
+            resolve();
+        };
+        
+        utterance.onerror = function(e) {
+            console.error('Speech error:', e);
+            if (callActive && !isProcessing) {
+                setTimeout(startListening, 300);
+            }
+            resolve();
+        };
+        
+        window.speechSynthesis.speak(utterance);
+        
+        setTimeout(function() {
+            if (callActive && !isProcessing) {
+                startListening();
+            }
+            resolve();
+        }, 30000);
+    });
+}
+
+// ============================================
+// CALL FUNCTIONS
+// ============================================
+
+function startCall() {
+    const student = document.getElementById('student-select').value;
+    isProcessing = false;
+    
+    document.getElementById('start-btn').disabled = true;
+    document.getElementById('end-btn').disabled = false;
+    document.getElementById('status-dot').className = 'dot';
+    document.getElementById('status-text').textContent = 'Connecting...';
+    document.getElementById('voiceStatus').innerHTML = '⏳ <span class="highlight">Connecting...</span>';
+    
+    fetch('/api/call/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ student: student })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        sessionId = data.session_id;
+        callActive = true;
+        
+        document.getElementById('messages').innerHTML = '';
+        document.getElementById('voiceStatus').innerHTML = '🔊 <span class="highlight">AI is speaking...</span>';
+        document.getElementById('mic-ring').className = 'pulse-ring speaking';
+        document.getElementById('mic-status-text').textContent = '🔊 Speaking...';
+        document.getElementById('status-dot').className = 'dot';
+        document.getElementById('status-text').textContent = 'In Call';
+        
+        addMessage('assistant', data.response);
+        speakText(data.response);
+    })
+    .catch(function(err) {
+        alert('Error: ' + err.message);
+        document.getElementById('start-btn').disabled = false;
+        document.getElementById('end-btn').disabled = true;
+        document.getElementById('status-text').textContent = 'Error';
+    });
+}
+
+function sendMessage() {
+    const input = document.getElementById('message-input');
+    const message = input.value.trim();
+    if (!message || !sessionId || !callActive || isProcessing) return;
+    
+    isProcessing = true;
+    input.value = '';
+    addMessage('user', message);
+    document.getElementById('voiceStatus').innerHTML = '⏳ <span class="highlight">Thinking...</span>';
+    document.getElementById('status-dot').className = 'dot listening';
+    document.getElementById('status-text').textContent = 'Processing';
+    document.getElementById('mic-ring').className = 'pulse-ring inactive';
+    document.getElementById('mic-status-text').textContent = '⏳ Processing...';
+    
+    fetch('/api/call/message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            session_id: sessionId,
+            message: message
+        })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        if (data.error) {
+            alert('Error: ' + data.error);
+            isProcessing = false;
+            if (callActive) {
+                setTimeout(startListening, 500);
+            }
+            return;
+        }
+        
+        addMessage('assistant', data.response);
+        document.getElementById('voiceStatus').innerHTML = '🔊 <span class="highlight">Speaking...</span>';
+        document.getElementById('mic-ring').className = 'pulse-ring speaking';
+        document.getElementById('mic-status-text').textContent = '🔊 Speaking...';
+        document.getElementById('status-dot').className = 'dot speaking';
+        document.getElementById('status-text').textContent = 'Speaking';
+        
+        speakText(data.response).then(function() {
+            isProcessing = false;
+            
+            if (data.ended) {
+                callActive = false;
+                document.getElementById('start-btn').disabled = false;
+                document.getElementById('end-btn').disabled = true;
+                document.getElementById('status-dot').className = 'dot inactive';
+                document.getElementById('status-text').textContent = 'Call Ended';
+                document.getElementById('mic-ring').className = 'pulse-ring inactive';
+                document.getElementById('mic-status-text').textContent = '📞 Call ended';
+                document.getElementById('voiceStatus').innerHTML = 'Call ended. Press "Start Call" again.';
+                
+                if (data.resolved) {
+                    document.getElementById('status-text').textContent = 'Resolved';
+                } else if (data.transfer) {
+                    document.getElementById('status-text').textContent = 'Transferred to Human';
+                }
+            } else {
+                document.getElementById('status-dot').className = 'dot listening';
+                document.getElementById('status-text').textContent = 'Listening';
+                document.getElementById('mic-ring').className = 'pulse-ring listening';
+                document.getElementById('mic-status-text').textContent = '🎤 Listening... Speak now!';
+                document.getElementById('voiceStatus').innerHTML = '🎤 <span class="highlight">Listening...</span> Speak now!';
+                setTimeout(startListening, 300);
+            }
+            
+            if (data.awaiting_feedback) {
+                document.getElementById('voiceStatus').innerHTML = '🤔 Please say <span class="highlight">"Yes"</span> or <span class="highlight">"No"</span>';
+            }
+        });
+    })
+    .catch(function(err) {
+        alert('Error: ' + err.message);
+        isProcessing = false;
+        if (callActive) {
+            setTimeout(startListening, 500);
+        }
+    });
+}
+
+function addMessage(role, text) {
+    const container = document.getElementById('messages');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'message ' + role;
+    
+    const label = role === 'user' ? 'You' : 'AI Agent';
+    messageDiv.innerHTML = `
+        <div class="label">${label}</div>
+        <div class="bubble">${text}</div>
+    `;
+    
+    container.appendChild(messageDiv);
+    container.scrollTop = container.scrollHeight;
+}
+
+function quickMessage(text) {
+    if (!callActive) {
+        alert('Please start a call first!');
+        return;
+    }
+    if (isProcessing) {
+        document.getElementById('voiceStatus').innerHTML = '⏳ Please wait for AI to respond...';
+        return;
+    }
+    document.getElementById('message-input').value = text;
+    sendMessage();
+}
+
+function endCall() {
+    if (!sessionId) return;
+    
+    if (confirm('End this call?')) {
+        if (isListening) {
+            try { recognition.stop(); } catch(e) {}
+        }
+        isListening = false;
+        
+        fetch('/api/call/end', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ session_id: sessionId })
+        })
+        .then(function() {
+            callActive = false;
+            isProcessing = false;
+            document.getElementById('start-btn').disabled = false;
+            document.getElementById('end-btn').disabled = true;
+            document.getElementById('status-dot').className = 'dot inactive';
+            document.getElementById('status-text').textContent = 'Call Ended';
+            document.getElementById('mic-ring').className = 'pulse-ring inactive';
+            document.getElementById('mic-status-text').textContent = '📞 Call ended';
+            addMessage('assistant', 'Call ended. Thank you for using EduCall AI!');
+            document.getElementById('voiceStatus').innerHTML = 'Call ended. Press "Start Call" again.';
+            window.speechSynthesis.cancel();
+        });
+    }
+}
+
+// ============================================
+// INIT
+// ============================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.getVoices();
+        window.speechSynthesis.onvoiceschanged = function() {
+            window.speechSynthesis.getVoices();
+        };
+        setTimeout(function() {
+            window.speechSynthesis.getVoices();
+        }, 1000);
+    }
+    
+    initSpeechRecognition();
+});
+</script>
+{% endblock %}

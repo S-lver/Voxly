@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Students - EduCall AI{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <h1>
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        Upload Student Data
+    </h1>
+</div>
+
+<div class="card">
+    <h3>Upload Excel File</h3>
+    <p style="color: var(--gray-500); margin: 0.5rem 0;">
+        Upload an Excel file (.xlsx or .xls) with student data.
+        <br>Required columns: <strong>Name</strong>, <strong>Grade</strong>
+        <br>Optional: Homeroom, ParentPhone, Balance, Attendance, Email
+    </p>
+    
+    <div class="upload-area" id="upload-area" style="border: 2px dashed var(--gray-300); border-radius: var(--radius); padding: 3rem; text-align: center; margin: 1.5rem 0; cursor: pointer; transition: all 0.3s;">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--gray-400)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <p><strong>Drop your Excel file here</strong></p>
+        <p style="color: var(--gray-500); font-size: 0.875rem;">or click to browse</p>
+        <input type="file" id="file-input" accept=".xlsx,.xls" style="display: none;">
+    </div>
+    
+    <button class="btn btn-secondary" onclick="downloadSample()">
+        📥 Download Sample Excel
+    </button>
+    <button class="btn btn-danger" onclick="clearStudents()" style="margin-left: 0.5rem;">
+        🗑️ Clear All Students
+    </button>
+</div>
+
+<div class="card" id="status-card" style="display: none;">
+    <div id="upload-status"></div>
+</div>
+
+<div class="card">
+    <h3>Current Students</h3>
+    <div id="student-list" style="max-height: 400px; overflow-y: auto;">
+        <p style="color: var(--gray-500);">No students loaded yet. Upload an Excel file!</p>
+    </div>
+</div>
+
+<script>
+const uploadArea = document.getElementById('upload-area');
+const fileInput = document.getElementById('file-input');
+
+uploadArea.addEventListener('click', () => fileInput.click());
+uploadArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadArea.style.borderColor = 'var(--primary)';
+    uploadArea.style.background = 'rgba(37, 99, 235, 0.05)';
+});
+uploadArea.addEventListener('dragleave', () => {
+    uploadArea.style.borderColor = 'var(--gray-300)';
+    uploadArea.style.background = 'transparent';
+});
+uploadArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadArea.style.borderColor = 'var(--gray-300)';
+    uploadArea.style.background = 'transparent';
+    if (e.dataTransfer.files.length) {
+        fileInput.files = e.dataTransfer.files;
+        uploadFile(e.dataTransfer.files[0]);
+    }
+});
+
+fileInput.addEventListener('change', () => {
+    if (fileInput.files.length) {
+        uploadFile(fileInput.files[0]);
+    }
+});
+
+async function uploadFile(file) {
+    const statusCard = document.getElementById('status-card');
+    const status = document.getElementById('upload-status');
+    statusCard.style.display = 'block';
+    status.innerHTML = '<div class="alert alert-info">⏳ Uploading and processing...</div>';
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+        const response = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.error) {
+            status.innerHTML = `<div class="alert alert-danger">❌ ${data.error}</div>`;
+        } else {
+            status.innerHTML = `<div class="alert alert-success">✅ ${data.message}</div>`;
+            loadStudents();
+        }
+    } catch (error) {
+        status.innerHTML = `<div class="alert alert-danger">❌ Error: ${error.message}</div>`;
+    }
+}
+
+async function loadStudents() {
+    try {
+        const response = await fetch('/api/students');
+        const students = await response.json();
+        
+        const list = document.getElementById('student-list');
+        if (students.length === 0) {
+            list.innerHTML = '<p style="color: var(--gray-500);">No students loaded yet. Upload an Excel file!</p>';
+            return;
+        }
+        
+        list.innerHTML = `
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Grade</th>
+                        <th>Homeroom</th>
+                        <th>Balance</th>
+                        <th>Attendance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${students.map(s => `
+                        <tr>
+                            <td><strong>${s.name}</strong></td>
+                            <td>${s.grade}</td>
+                            <td>${s.homeroom || '-'}</td>
+                            <td>$${s.balance}</td>
+                            <td><span class="badge ${s.attendance === 'Present' ? 'badge-success' : 'badge-danger'}">${s.attendance}</span></td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+            <p style="margin-top: 1rem; color: var(--gray-500);">Total: ${students.length} students</p>
+        `;
+    } catch (error) {
+        console.error('Error loading students:', error);
+    }
+}
+
+async function downloadSample() {
+    window.location.href = '/api/download_sample';
+}
+
+async function clearStudents() {
+    if (!confirm('Delete all students? This cannot be undone!')) return;
+    
+    try {
+        const response = await fetch('/api/students', { method: 'DELETE' });
+        const data = await response.json();
+        if (data.success) {
+            alert('All students cleared!');
+            loadStudents();
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+
+loadStudents();
+</script>
+{% endblock %}

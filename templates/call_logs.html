@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}Call Logs - EduCall AI{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <h1>
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+        </svg>
+        Call Logs
+    </h1>
+    <div>
+        <button class="btn btn-secondary" onclick="exportLogs()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline; vertical-align:middle;">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Export CSV
+        </button>
+        <button class="btn btn-secondary" onclick="loadLogs('all')">All</button>
+        <button class="btn btn-success" onclick="loadLogs('resolved')">✅ Resolved</button>
+        <button class="btn btn-danger" onclick="loadLogs('unresolved')">❌ Unresolved</button>
+    </div>
+</div>
+
+<div class="card">
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Student</th>
+                    <th>Question</th>
+                    <th>AI Response</th>
+                    <th>Status</th>
+                    <th>Duration</th>
+                </tr>
+            </thead>
+            <tbody id="logs-table">
+                <tr>
+                    <td colspan="6" style="text-align: center; color: var(--gray-500);">Loading logs...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+let currentFilter = 'all';
+
+async function loadLogs(filter) {
+    currentFilter = filter;
+    const url = filter === 'all' ? '/api/logs' : `/api/logs/${filter}`;
+    
+    try {
+        const response = await fetch(url);
+        const logs = await response.json();
+        
+        const tbody = document.getElementById('logs-table');
+        if (logs.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--gray-500);">No logs found</td></tr>`;
+            return;
+        }
+        
+        tbody.innerHTML = logs.map(log => `
+            <tr>
+                <td>${log.created_at}</td>
+                <td><strong>${log.student_name || 'Unknown'}</strong></td>
+                <td>${log.question ? log.question.substring(0, 50) + (log.question.length > 50 ? '...' : '') : '-'}</td>
+                <td>${log.ai_response ? log.ai_response.substring(0, 50) + (log.ai_response.length > 50 ? '...' : '') : '-'}</td>
+                <td>
+                    ${log.resolved === true ? '<span class="badge badge-success">✅ Resolved</span>' : 
+                      log.resolved === false ? '<span class="badge badge-danger">❌ Unresolved</span>' :
+                      '<span class="badge badge-warning">⏳ Not Asked</span>'}
+                </td>
+                <td>${log.duration}s</td>
+            </tr>
+        `).join('');
+        
+    } catch (error) {
+        console.error('Error loading logs:', error);
+        document.getElementById('logs-table').innerHTML = 
+            `<tr><td colspan="6" style="text-align: center; color: var(--danger);">Error loading logs: ${error.message}</td></tr>`;
+    }
+}
+
+function exportLogs() {
+    window.location.href = '/api/logs/export';
+}
+
+loadLogs('all');
+setInterval(() => loadLogs(currentFilter), 15000);
+</script>
+{% endblock %}
