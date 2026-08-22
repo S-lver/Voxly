@@ -6,7 +6,7 @@ load_dotenv()
 class Config:
     SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key')
     
-    # Database - works locally and on Render
+    # ✅ FIX: Use /tmp for Render, local file for development
     if os.getenv('RENDER'):
         SQLALCHEMY_DATABASE_URI = 'sqlite:///tmp/calls.db'
     else:
