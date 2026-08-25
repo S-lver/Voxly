@@ -1,29 +1,37 @@
 import os
 
 class Config:
-    # Secret key for sessions and security
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production'
+    # Secret key
+    SECRET_KEY = os.environ.get('SECRET_KEY') or 'your-secret-key-here'
     
-    # Database configuration
+    # FIXED: Database configuration (this replaces your old SQLite URI)
     database_url = os.environ.get('DATABASE_URL')
-    
-    # Render uses 'postgres://', but SQLAlchemy needs 'postgresql://'
     if database_url and database_url.startswith('postgres://'):
         database_url = database_url.replace('postgres://', 'postgresql://', 1)
-    
-    # Use PostgreSQL in production, SQLite for local development
     SQLALCHEMY_DATABASE_URI = database_url or 'sqlite:///instance/app.db'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
-    # Upload folder configuration
+    # ============================================
+    # YOUR ORIGINAL CONFIG SETTINGS GO HERE
+    # ============================================
+    
+    # File upload settings
     UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size
+    ALLOWED_EXTENSIONS = {'xlsx', 'xls'}
     
-    # Ensure upload directory exists
-    @staticmethod
-    def init_directories():
-        os.makedirs(Config.UPLOAD_FOLDER, exist_ok=True)
-        if not Config.SQLALCHEMY_DATABASE_URI.startswith('postgresql://'):
-            # For SQLite, ensure instance directory exists
-            instance_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance')
-            os.makedirs(instance_dir, exist_ok=True)
+    # Gemini API settings
+    GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY') or 'your-gemini-api-key-here'
+    GEMINI_MODEL = 'gemini-1.5-flash'  # or whatever model you use
+    
+    # Session settings
+    SESSION_TYPE = 'filesystem'
+    PERMANENT_SESSION_LIFETIME = 3600  # 1 hour
+    
+    # Logging settings
+    LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO')
+    
+    # Any other config settings you had
+    # ... 
+    # ... keep ALL your original settings here
+    # ...
