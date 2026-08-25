@@ -15,26 +15,63 @@ from io import StringIO
 import uuid
 import re
 
+# ============================================
+# CREATE REQUIRED DIRECTORIES FIRST
+# ============================================
+
+# Get the absolute path to the project root
+project_root = os.path.dirname(os.path.abspath(__file__))
+
+# Create instance directory with absolute path
+instance_dir = os.path.join(project_root, 'instance')
+os.makedirs(instance_dir, exist_ok=True)
+print(f"✅ Created instance directory: {instance_dir}")
+
+# Create uploads directory
+uploads_dir = os.path.join(project_root, 'uploads')
+os.makedirs(uploads_dir, exist_ok=True)
+print(f"✅ Created uploads directory: {uploads_dir}")
+
+# ============================================
+# INITIALIZE FLASK APP
+# ============================================
+
 app = Flask(__name__)
 
-# Ensure instance directory exists for SQLite fallback
-os.makedirs('instance', exist_ok=True)
-
+# Load configuration
 app.config.from_object(Config)
+
+# Debug: Print the database URI being used
+print(f"✅ Database URI: {app.config['SQLALCHEMY_DATABASE_URI']}")
+
+# ============================================
+# INITIALIZE DATABASE
+# ============================================
 
 db = SQLAlchemy(app)
 
 # Create tables
 with app.app_context():
-    db.create_all()
-    print("✅ Database ready")
+    try:
+        db.create_all()
+        print("✅ Database tables created successfully")
+    except Exception as e:
+        print(f"❌ Database creation error: {e}")
+        print(f"Database URI used: {app.config['SQLALCHEMY_DATABASE_URI']}")
+        raise
+
+# ============================================
+# INITIALIZE SERVICES
+# ============================================
 
 gemini = GeminiService()
 excel_service = ExcelService()
 
+# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Conversations store
 conversations = {}
 
 # ============================================
