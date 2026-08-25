@@ -2,8 +2,8 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from flask import Flask, request, render_template, jsonify, send_file, Response
-from models import db, Student, CallLog
+from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for, flash, Response
+from flask_sqlalchemy import SQLAlchemy
 from services.gemini_service import GeminiService
 from services.excel_service import ExcelService
 from config import Config
@@ -16,9 +16,13 @@ import uuid
 import re
 
 app = Flask(__name__)
+
+# Ensure instance directory exists for SQLite fallback
+os.makedirs('instance', exist_ok=True)
+
 app.config.from_object(Config)
 
-db.init_app(app)
+db = SQLAlchemy(app)
 
 # Create tables
 with app.app_context():
