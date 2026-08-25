@@ -16,54 +16,27 @@ import uuid
 import re
 
 # ============================================
-# CREATE REQUIRED DIRECTORIES FIRST
+# IMPORT MODELS - FIXES THE NameError
 # ============================================
-
-# Get the absolute path to the project root
-project_root = os.path.dirname(os.path.abspath(__file__))
-
-# Create instance directory with absolute path
-instance_dir = os.path.join(project_root, 'instance')
-os.makedirs(instance_dir, exist_ok=True)
-print(f"✅ Created instance directory: {instance_dir}")
-
-# Create uploads directory
-uploads_dir = os.path.join(project_root, 'uploads')
-os.makedirs(uploads_dir, exist_ok=True)
-print(f"✅ Created uploads directory: {uploads_dir}")
-
-# ============================================
-# INITIALIZE FLASK APP
-# ============================================
+from models import db, Student, CallLog
 
 app = Flask(__name__)
 
-# Load configuration
+# Create instance directory
+os.makedirs('instance', exist_ok=True)
+
 app.config.from_object(Config)
 
-# Debug: Print the database URI being used
-print(f"✅ Database URI: {app.config['SQLALCHEMY_DATABASE_URI']}")
-
-# ============================================
-# INITIALIZE DATABASE
-# ============================================
-
-db = SQLAlchemy(app)
+# db is now imported from models, so don't redefine it here
+# Just make sure it's initialized with the app
+db.init_app(app)
 
 # Create tables
 with app.app_context():
-    try:
-        db.create_all()
-        print("✅ Database tables created successfully")
-    except Exception as e:
-        print(f"❌ Database creation error: {e}")
-        print(f"Database URI used: {app.config['SQLALCHEMY_DATABASE_URI']}")
-        raise
+    db.create_all()
+    print("✅ Database ready")
 
-# ============================================
-# INITIALIZE SERVICES
-# ============================================
-
+# Initialize services
 gemini = GeminiService()
 excel_service = ExcelService()
 
@@ -88,7 +61,12 @@ def upload():
 
 @app.route('/call')
 def call_simulator():
-    return render_template('call_simulator.html', students=Student.query.all())
+    try:
+        students = Student.query.all()
+        return render_template('call_simulator.html', students=students)
+    except Exception as e:
+        print(f"❌ Error in call_simulator: {e}")
+        return render_template('call_simulator.html', students=[])
 
 @app.route('/logs')
 def logs():
@@ -371,19 +349,30 @@ def delete_students():
 
 @app.route('/api/stats', methods=['GET'])
 def get_stats():
-    total_calls = CallLog.query.count()
-    resolved = CallLog.query.filter_by(resolved=True).count()
-    unresolved = CallLog.query.filter_by(resolved=False).count()
-    not_asked = CallLog.query.filter_by(resolved=None).count()
-    
-    return jsonify({
-        'total_calls': total_calls,
-        'resolved': resolved,
-        'unresolved': unresolved,
-        'not_asked': not_asked,
-        'resolution_rate': f"{(resolved / total_calls * 100) if total_calls > 0 else 0:.1f}%",
-        'total_students': Student.query.count()
-    })
+    try:
+        total_calls = CallLog.query.count()
+        resolved = CallLog.query.filter_by(resolved=True).count()
+        unresolved = CallLog.query.filter_by(resolved=False).count()
+        not_asked = CallLog.query.filter_by(resolved=None).count()
+        
+        return jsonify({
+            'total_calls': total_calls,
+            'resolved': resolved,
+            'unresolved': unresolved,
+            'not_asked': not_asked,
+            'resolution_rate': f"{(resolved / total_calls * 100) if total_calls > 0 else 0:.1f}%",
+            'total_students': Student.query.count()
+        })
+    except Exception as e:
+        print(f"❌ Stats error: {e}")
+        return jsonify({
+            'total_calls': 0,
+            'resolved': 0,
+            'unresolved': 0,
+            'not_asked': 0,
+            'resolution_rate': '0%',
+            'total_students': 0
+        })
 
 # ============================================
 # MAIN
